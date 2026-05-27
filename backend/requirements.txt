@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+aiokafka
+httpx
+sqlalchemy
+asyncpg
+redis
+python-dotenv
+pydantic
+websockets
+yfinance
+vaderSentiment
+transformers
+torch
