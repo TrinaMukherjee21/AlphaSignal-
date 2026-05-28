@@ -10,9 +10,10 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-HEADERS = {
-    'User-Agent': 'TradeSentiment/1.0'
-}
+HEADERS = {'User-Agent': 'TradeSentiment/1.0'}
+
+# Track last seen post timestamp per (ticker, subreddit) to avoid reprocessing
+last_seen_utc: dict = {}
 
 async def fetch_reddit_search(ticker: str, subreddit: str, client: httpx.AsyncClient):
     url = f"https://www.reddit.com/r/{subreddit}/search.json?q={ticker}&sort=new&limit=10"
@@ -32,29 +33,42 @@ async def reddit_scraper_loop(tickers: list, producer: KafkaProducer):
     async with httpx.AsyncClient() as client:
         while True:
             logger.info("Starting Reddit JSON feed scrape cycle...")
-            
+
             for ticker in tickers:
                 is_indian_market = ticker.endswith('.NS') or ticker.endswith('.BO')
                 active_subreddits = ["IndianStreetBets", "IndiaInvestments"] if is_indian_market else ["stocks", "wallstreetbets"]
                 search_query = ticker.split('.')[0]
-                
+
                 for sub in active_subreddits:
                     posts = await fetch_reddit_search(search_query, sub, client)
-                    
+                    dedup_key = f"{ticker}:{sub}"
+                    new_count = 0
+
                     for post in posts:
                         data = post.get("data", {})
+                        created_utc = data.get("created_utc", 0)
+
+                        # Deduplicate: skip posts we've already seen
+                        if last_seen_utc.get(dedup_key, 0) >= created_utc:
+                            continue
+
                         message = {
                             "ticker": ticker,
                             "title": data.get("title"),
                             "selftext": data.get("selftext"),
                             "score": data.get("score"),
                             "url": f"https://www.reddit.com{data.get('permalink')}",
-                            "created_utc": data.get("created_utc")
+                            "created_utc": created_utc
                         }
                         await producer.publish("raw-social", message)
-                    
-                    # Small delay between subreddit requests to avoid rate limits
-                    await asyncio.sleep(1)
-            
-            logger.info("Reddit scrape cycle complete. Sleeping for 3 minutes.")
-            await asyncio.sleep(180)
+                        new_count += 1
+                        if created_utc > last_seen_utc.get(dedup_key, 0):
+                            last_seen_utc[dedup_key] = created_utc
+
+                    if new_count:
+                        logger.info(f"Published {new_count} new Reddit posts for {ticker} from r/{sub}.")
+
+                    await asyncio.sleep(1)  # Small delay between subreddits
+
+            logger.info("Reddit scrape cycle complete. Sleeping for 60 seconds.")
+            await asyncio.sleep(60)

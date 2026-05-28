@@ -17,7 +17,7 @@ import { useSentimentStore } from '../store/useSentimentStore';
 import { TrendingUp, Zap } from 'lucide-react';
 
 const PriceChart = () => {
-    const { priceData, scores } = useSentimentStore();
+    const { priceData, scores, timeframe, setTimeframe } = useSentimentStore();
     const [flash, setFlash] = useState(false);
 
     // Trigger flash animation on data updates
@@ -45,8 +45,12 @@ const PriceChart = () => {
                 dateObj = new Date();
             }
             
+            const isHistorical = timeframe === '1W' || timeframe === '1M';
+            
             const timeStr = !isNaN(dateObj.getTime()) 
-                ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) 
+                ? isHistorical 
+                    ? dateObj.toLocaleDateString([], { month: 'short', day: '2-digit' }) + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+                    : dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) 
                 : '??:??';
 
             const s = scores.find(s => Math.abs(new Date(s.timestamp).getTime() - dateObj.getTime()) < 60000);
@@ -56,6 +60,7 @@ const PriceChart = () => {
                 time: timeStr,
                 rawTime: dateObj.getTime(),
                 sentiment: s ? s.score : 0,
+                news: s ? s.text : null,
                 close: p.close || 0,
                 high: p.high || p.close || 0,
                 low: p.low || p.close || 0,
@@ -91,6 +96,35 @@ const PriceChart = () => {
     const priceMin = Math.min(...fullData.map(d => d.close));
     const priceMax = Math.max(...fullData.map(d => d.close));
     const pricePadding = (priceMax - priceMin) * 0.1 || currentPrice * 0.01;
+
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+            const data = payload[0].payload;
+            return (
+                <div className="bg-black/80 backdrop-blur-md border border-[#00f0ff]/30 p-3 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.15)] flex flex-col gap-1 z-[100] relative">
+                    <p className="text-[#00f0ff] font-black text-[10px] uppercase tracking-widest mb-1">{label}</p>
+                    <p className="text-white font-mono font-bold text-[13px]">Price: ${data.close.toFixed(2)}</p>
+                    {data.news && (
+                        <div className="mt-2 pt-2 border-t border-white/10 max-w-[220px]">
+                            <p className="text-[9px] text-[#ff00e5] font-black uppercase tracking-widest mb-1">News Impact</p>
+                            <p className="text-[11px] text-slate-300 leading-tight">{data.news}</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const renderCustomDot = (props) => {
+        const { cx, cy, payload, key } = props;
+        if (payload.news) {
+            return (
+                <circle key={key} cx={cx} cy={cy} r={4.5} fill={payload.sentiment > 0.2 ? '#00f0ff' : payload.sentiment < -0.2 ? '#ff00e5' : '#fff'} stroke="#000" strokeWidth={1.5} style={{ filter: 'drop-shadow(0 0 5px rgba(255,255,255,0.8))' }} />
+            );
+        }
+        return null;
+    };
 
     return (
         <div className="w-full h-full bg-transparent p-6 flex flex-col gap-6 relative overflow-hidden rounded-2xl group">
@@ -142,9 +176,22 @@ const PriceChart = () => {
 
             {/* Main Price Visualization */}
             <div className="flex-1 flex flex-col gap-2 min-h-0 bg-black/20 p-4 rounded-xl border border-white/5">
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="w-1.5 h-3 bg-[#00f0ff] rounded-full drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]" />
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Core Price Trajectory</h3>
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-3 bg-[#00f0ff] rounded-full drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]" />
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Core Price Trajectory</h3>
+                    </div>
+                    <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/5">
+                        {['1D', '1W', '1M'].map(tf => (
+                            <button 
+                                key={tf}
+                                onClick={() => setTimeframe(tf)}
+                                className={`px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest transition-colors ${timeframe === tf ? 'bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/30 shadow-[0_0_10px_rgba(0,240,255,0.2)]' : 'bg-transparent text-slate-500 hover:text-slate-300 border border-transparent cursor-pointer'}`}
+                            >
+                                {tf}
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 
                 <div className="flex-1 min-h-0 w-full relative">
@@ -167,6 +214,7 @@ const PriceChart = () => {
                                 minTickGap={40}
                                 interval="preserveStartEnd"
                                 tick={{ fill: '#64748b', fontWeight: 'bold' }}
+                                padding={{ left: 20, right: 20 }}
                             />
                             <YAxis 
                                 domain={[priceMin - pricePadding, priceMax + pricePadding]} 
@@ -180,10 +228,8 @@ const PriceChart = () => {
                                 tick={{ fill: '#94a3b8', fontWeight: 'bold' }}
                             />
                             <Tooltip 
-                                contentStyle={{ backgroundColor: 'rgba(5, 5, 10, 0.8)', backdropFilter: 'blur(10px)', border: '1px solid rgba(0, 240, 255, 0.3)', borderRadius: '12px', boxShadow: '0 0 20px rgba(0, 240, 255, 0.15)' }}
-                                itemStyle={{ color: '#fff', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold' }}
-                                labelStyle={{ color: '#00f0ff', fontSize: '10px', fontWeight: '900', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.1em' }}
-                                cursor={{ stroke: 'rgba(0, 240, 255, 0.4)', strokeWidth: 1, strokeDasharray: '3 3' }}
+                                content={<CustomTooltip />} 
+                                cursor={{ stroke: 'rgba(0, 240, 255, 0.4)', strokeWidth: 1, strokeDasharray: '3 3' }} 
                             />
                             
                             <Area
@@ -201,7 +247,8 @@ const PriceChart = () => {
                                 dataKey="close" 
                                 stroke="#00f0ff" 
                                 strokeWidth={3} 
-                                dot={false}
+                                dot={renderCustomDot}
+                                activeDot={{ r: 6, fill: '#00f0ff', stroke: '#fff', strokeWidth: 2 }}
                                 className="chart-line-glow"
                                 animationDuration={1000}
                                 animationEasing="ease-out"

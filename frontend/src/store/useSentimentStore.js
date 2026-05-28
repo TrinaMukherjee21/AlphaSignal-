@@ -10,13 +10,14 @@ export const useSentimentStore = create((set, get) => ({
     signal: "HOLD",
     priceData: [],
     newsFeed: [],
+    timeframe: '1D',
     ws: null,
 
     wsStatus: 'connecting',
 
     setTicker: async (ticker) => {
         const { connectWebSocket } = get();
-        set({ currentTicker: ticker, scores: [], newsFeed: [], priceData: [], wsStatus: 'connecting' });
+        set({ currentTicker: ticker, scores: [], newsFeed: [], priceData: [], wsStatus: 'connecting', timeframe: '1D' });
         
         // Fetch initial data
         try {
@@ -39,16 +40,45 @@ export const useSentimentStore = create((set, get) => ({
         }
     },
 
-    connectWebSocket: (ticker) => {
+    setTimeframe: async (tf) => {
+        set({ timeframe: tf });
+        const { currentTicker } = get();
+        if (!currentTicker) return;
+
+        let period = '1d';
+        if (tf === '1W') period = '1wk';
+        if (tf === '1M') period = '1mo';
+
+        try {
+            const priceRes = await axios.get(`${API_BASE}/prices/${currentTicker}?period=${period}`);
+            set({ priceData: priceRes.data });
+        } catch (error) {
+            console.error("Error fetching timeframe relative data:", error);
+        }
+    },
+
+    connectWebSocket: (ticker, retryDelay = 1000) => {
         const { ws: oldWs } = get();
         if (oldWs) oldWs.close();
 
         set({ wsStatus: 'connecting' });
         const ws = new WebSocket(`${WS_BASE}/${ticker}`);
         
-        ws.onopen = () => set({ wsStatus: 'connected' });
-        ws.onclose = () => set({ wsStatus: 'reconnecting' });
-        ws.onerror = () => set({ wsStatus: 'reconnecting' });
+        ws.onopen = () => {
+            set({ wsStatus: 'connected' });
+        };
+
+        const handleReconnect = () => {
+            // Only reconnect if we're still on the same ticker
+            if (get().currentTicker !== ticker) return;
+            set({ wsStatus: 'reconnecting' });
+            const nextDelay = Math.min(retryDelay * 2, 30000);
+            console.log(`[WS] Reconnecting ${ticker} in ${retryDelay}ms...`);
+            setTimeout(() => get().connectWebSocket(ticker, nextDelay), retryDelay);
+        };
+
+        ws.onclose = handleReconnect;
+        ws.onerror = () => ws.close(); // triggers onclose which handles reconnect
         
         ws.onmessage = (event) => {
             const message = JSON.parse(event.data);
@@ -61,10 +91,12 @@ export const useSentimentStore = create((set, get) => ({
                     signal: message.signal || state.signal
                 }));
             } else if (message.type === "price" || message.close !== undefined) {
-                // It's a price update
-                set((state) => ({
-                    priceData: [...state.priceData, message].slice(-200)
-                }));
+                // It's a price update - but only append if we are looking at real-time 1D data
+                if (get().timeframe === '1D') {
+                    set((state) => ({
+                        priceData: [...state.priceData, message].slice(-300)
+                    }));
+                }
             }
         };
 

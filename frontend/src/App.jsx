@@ -4,6 +4,7 @@ import TickerSearch from './components/TickerSearch';
 import PriceChart from './components/PriceChart';
 import SignalBadge from './components/SignalBadge';
 import NewsFeed from './components/NewsFeed';
+import NotificationManager from './components/NotificationManager';
 import { TrendingUp, Clock, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
 import './App.css';
@@ -69,6 +70,7 @@ function App() {
 
   return (
     <div className="min-h-screen text-slate-200 font-sans selection:bg-[#00f0ff]/30 relative overflow-hidden">
+      <NotificationManager />
       {backgroundBlobs}
       
       {/* Top Navigation Bar - Frost Glass */}

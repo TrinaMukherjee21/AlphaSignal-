@@ -2,7 +2,6 @@ import os
 import asyncio
 import httpx
 import logging
-from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from kafka.producer import KafkaProducer
 
@@ -14,9 +13,12 @@ logger = logging.getLogger(__name__)
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 NEWS_API_URL = "https://newsapi.org/v2/everything"
 
+# Track last seen article publishedAt per ticker to avoid reprocessing
+last_seen_at: dict = {}
+
 async def fetch_news_for_ticker(ticker: str, client: httpx.AsyncClient):
     try:
-        # Remove country suffixes (e.g. .NS, .BO, .L) so News API actually gets proper article hits
+        # Remove country suffixes (e.g. .NS, .BO) so News API gets proper article hits
         search_query = ticker.split('.')[0]
         params = {
             "q": search_query,
@@ -39,16 +41,27 @@ async def news_scraper_loop(tickers: list, producer: KafkaProducer):
             logger.info("Starting news scrape cycle...")
             for ticker in tickers:
                 articles = await fetch_news_for_ticker(ticker, client)
+                new_count = 0
                 for article in articles:
+                    pub_at = article.get("publishedAt", "")
+                    # Deduplicate: skip articles we've already seen for this ticker
+                    if last_seen_at.get(ticker) and pub_at <= last_seen_at[ticker]:
+                        continue
                     message = {
                         "ticker": ticker,
                         "title": article.get("title"),
                         "description": article.get("description"),
                         "url": article.get("url"),
-                        "publishedAt": article.get("publishedAt"),
+                        "publishedAt": pub_at,
                         "source": article.get("source", {}).get("name")
                     }
                     await producer.publish("raw-news", message)
-            
-            logger.info("News scrape cycle complete. Sleeping for 5 minutes.")
-            await asyncio.sleep(300)
+                    new_count += 1
+                    if not last_seen_at.get(ticker) or pub_at > last_seen_at[ticker]:
+                        last_seen_at[ticker] = pub_at
+
+                if new_count:
+                    logger.info(f"Published {new_count} new articles for {ticker}.")
+
+            logger.info("News scrape cycle complete. Sleeping for 60 seconds.")
+            await asyncio.sleep(60)

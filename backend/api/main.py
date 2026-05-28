@@ -1,13 +1,15 @@
 import asyncio
+import json
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import sentiment, prices
+from api.routes import sentiment, prices, stream
 from api.websocket import ws_routes
 from api.websocket.ws_manager import manager
 from kafka.consumer import KafkaConsumer
 from db.database import engine
 from db.models import Base
+from db.redis_client import redis_client
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,6 +27,7 @@ app.add_middleware(
 
 app.include_router(sentiment.router)
 app.include_router(prices.router)
+app.include_router(stream.router)
 app.include_router(ws_routes.router)
 
 @app.on_event("startup")
@@ -44,5 +47,13 @@ async def kafka_broadcast_task():
     async for message in consumer.listen():
         ticker = message.get("ticker")
         if ticker:
-            # Broadcast to all WS clients subscribed to this ticker
+            # 1. Broadcast to all WS clients subscribed to this ticker
             await manager.broadcast(ticker, message)
+            
+            # 2. Publish to Redis pub/sub for SSE clients
+            payload = json.dumps(message)
+            await redis_client.publish(f"updates:{ticker}", payload)
+            
+            # 3. Cache last signal for instant hydration on new connections
+            if "signal" in message:
+                await redis_client.set(f"last_signal:{ticker}", payload, ex=3600)
