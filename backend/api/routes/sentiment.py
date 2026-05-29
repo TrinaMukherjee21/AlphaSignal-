@@ -8,8 +8,10 @@ from db.redis_client import redis_client
 from typing import List
 import yfinance as yf
 from fastapi import HTTPException
+import logging
 
 router = APIRouter(prefix="/api")
+logger = logging.getLogger(__name__)
 
 @router.get("/sentiment/{ticker}")
 async def get_sentiment(ticker: str, db: AsyncSession = Depends(get_db)):
@@ -35,16 +37,26 @@ async def get_signal(ticker: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/tickers")
 async def get_tickers():
-    # Attempt to load from Redis
-    tickers = await redis_client.smembers("active_tickers")
-    if not tickers:
-        # Fall back to env and populate Redis
-        default_tickers = os.getenv("TICKERS", "AAPL,TSLA,RELIANCE.NS,TCS.NS").split(",")
-        tickers = [t.strip().upper() for t in default_tickers]
-        if tickers:
-            await redis_client.sadd("active_tickers", *tickers)
-    
-    return sorted(list(tickers))
+    try:
+        # Attempt to load from Redis
+        tickers = await redis_client.smembers("active_tickers")
+        
+        if not tickers:
+            # Fall back to env and populate Redis
+            env_tickers = os.getenv("TICKERS", "AAPL,TSLA,RELIANCE.NS,TCS.NS")
+            logger.info(f"🔄 [API] Ticker cache empty. Populating from env: {env_tickers}")
+            
+            default_tickers = env_tickers.split(",")
+            tickers_list = [t.strip().upper() for t in default_tickers if t.strip()]
+            
+            if tickers_list:
+                await redis_client.sadd("active_tickers", *tickers_list)
+                tickers = set(tickers_list)
+        
+        return sorted(list(tickers))
+    except Exception as e:
+        logger.error(f"❌ [API] Error fetching tickers: {e}")
+        return ["AAPL", "TSLA"] # Absolute emergency fallback
 
 @router.post("/tickers/{ticker}")
 async def add_ticker(ticker: str):
