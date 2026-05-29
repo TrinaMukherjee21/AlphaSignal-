@@ -19,11 +19,13 @@ from db.price_processor import PriceProcessor
 
 async def run_api():
     """Starts the FastAPI server via Uvicorn."""
-    logger.info("🚀 [API] Starting on http://0.0.0.0:8000")
+    import os
+    port = int(os.getenv("PORT", "8000"))
+    logger.info(f"🚀 [API] Starting on http://0.0.0.0:{port}")
     config = uvicorn.Config(
         app, 
         host="0.0.0.0", 
-        port=8000, 
+        port=port, 
         log_level="info",
         access_log=False
     )
