@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useSentimentStore } from '../store/useSentimentStore';
 import { Search, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_BASE } from '../config';
 
 const TickerSearch = () => {
     const [tickers, setTickers] = useState([]);
@@ -11,7 +12,7 @@ const TickerSearch = () => {
     const dropdownRef = useRef(null);
 
     useEffect(() => {
-        axios.get("http://localhost:8000/api/tickers")
+        axios.get(`${API_BASE}/tickers`)
             .then(res => setTickers(res.data))
             .catch(err => console.error(err));
     }, []);
@@ -83,7 +84,7 @@ const TickerSearch = () => {
                                                         const inputEl = e.target;
                                                         inputEl.disabled = true;
                                                         inputEl.placeholder = 'Validating...';
-                                                        axios.post(`http://localhost:8000/api/tickers/${val}`)
+                                                        axios.post(`${API_BASE}/tickers/${val}`)
                                                             .then(() => {
                                                                 setTickers(prev => [...prev, val]);
                                                                 setTicker(val);

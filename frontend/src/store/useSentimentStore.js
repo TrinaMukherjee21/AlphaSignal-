@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-const WS_BASE = import.meta.env.VITE_WS_URL || "ws://localhost:8000/ws";
+import { API_BASE, WS_BASE } from '../config';
 
 export const useSentimentStore = create((set, get) => ({
     currentTicker: "AAPL",

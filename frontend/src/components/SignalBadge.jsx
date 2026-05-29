@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSentimentStore } from '../store/useSentimentStore';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE } from '../config';
 
 const SignalBadge = () => {
     const { signal, newsFeed, currentTicker } = useSentimentStore();
@@ -13,7 +14,7 @@ const SignalBadge = () => {
         
         const fetchSignal = async () => {
             try {
-                const res = await axios.get(`http://localhost:8000/api/signal/${currentTicker}`);
+                const res = await axios.get(`${API_BASE}/signal/${currentTicker}`);
                 if (res.data && res.data.signal) {
                     useSentimentStore.setState({ signal: res.data.signal });
                 }
