@@ -10,7 +10,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+NEWS_API_KEY = os.getenv("NEWS_API_KEY", "").strip()
 NEWS_API_URL = "https://newsapi.org/v2/everything"
 
 # Track last seen article publishedAt per ticker to avoid reprocessing
