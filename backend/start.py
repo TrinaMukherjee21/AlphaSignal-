@@ -1,3 +1,4 @@
+# Backend entry point for Render deployment
 import logging
 
 # Configure logging early so we can show loading messages before heavy imports!
