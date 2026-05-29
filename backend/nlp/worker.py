@@ -20,7 +20,7 @@ class NLPWorker:
         self.producer = KafkaProducer()
         self.model = SentimentModel()
         self.signal_engine = SignalEngine()
-        self.batch_size = 16
+        self.batch_size = 1
 
     async def start(self):
         await self.producer.start()

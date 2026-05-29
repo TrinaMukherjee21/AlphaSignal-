@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-aiokafka
+gunicorn
 httpx
 sqlalchemy
 asyncpg

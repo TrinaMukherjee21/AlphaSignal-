@@ -1,76 +1,50 @@
-import os
 import json
 import logging
 import asyncio
-from aiokafka import AIOKafkaConsumer
-from dotenv import load_dotenv
-
-load_dotenv()
+from db.redis_client import redis_client
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class KafkaConsumer:
     def __init__(self, topics: list | str):
-        self.bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
         self.topics = [topics] if isinstance(topics, str) else topics
-        self.consumer = None
+        self.pubsub = redis_client.pubsub()
+        self._is_started = False
 
     async def start(self):
-        if self.consumer is not None:
-            try:
-                # If it's already started, this is a no-op or we can check state
-                # AIOKafkaConsumer doesn't have a simple .is_started but we can manage it
-                return
-            except Exception:
-                pass
-
-        retry_count = 0
-        while True:
-            try:
-                if self.consumer is None:
-                    self.consumer = AIOKafkaConsumer(
-                        *self.topics,
-                        bootstrap_servers=self.bootstrap_servers,
-                        group_id="sentiment_group",
-                        auto_offset_reset='earliest',
-                        value_deserializer=lambda x: json.loads(x.decode('utf-8'))
-                    )
-                
-                await self.consumer.start()
-                logger.info(f"Kafka Consumer started for topics: {self.topics}")
-                break
-            except Exception as e:
-                # If start fails, we clear the consumer so the next retry creates a fresh one
-                self.consumer = None
-                retry_count += 1
-                wait_time = min(2 ** retry_count, 60)
-                logger.error(f"Error connecting to Kafka: {e}. Retrying in {wait_time}s...")
-                await asyncio.sleep(wait_time)
+        if self._is_started:
+            return
+        try:
+            for topic in self.topics:
+                await self.pubsub.subscribe(topic)
+            logger.info(f"Redis-based Consumer (replacing Kafka) started for topics: {self.topics}")
+            self._is_started = True
+        except Exception as e:
+            logger.error(f"Error subscribing to Redis topics: {e}")
 
     async def listen(self):
-        if self.consumer is None:
+        if not self._is_started:
             await self.start()
             
         try:
-            async for msg in self.consumer:
-                yield msg.value
+            async for message in self.pubsub.listen():
+                if message['type'] == 'message':
+                    data = message['data']
+                    if isinstance(data, bytes):
+                        data = data.decode('utf-8')
+                    if isinstance(data, str):
+                        try:
+                            yield json.loads(data)
+                        except json.JSONDecodeError:
+                            logger.error(f"Failed to decode message data: {data}")
         except Exception as e:
             logger.error(f"Error during message consumption: {e}")
-            # Re-start consumer on error
-            await self.stop()
-            # self.stop() should set self.consumer to None to be safe
-            self.consumer = None
-            await self.start()
-            async for msg in self.listen():
-                yield msg
+            await asyncio.sleep(1)
 
     async def stop(self):
-        if self.consumer:
-            try:
-                await self.consumer.stop()
-            except Exception as e:
-                logger.error(f"Error stopping consumer: {e}")
-            finally:
-                self.consumer = None
-                logger.info(f"Kafka Consumer stopped for topics: {self.topics}")
+        if self.pubsub:
+            await self.pubsub.unsubscribe()
+            await self.pubsub.close()
+            self._is_started = False
+            logger.info(f"Redis Consumer stopped for topics: {self.topics}")
