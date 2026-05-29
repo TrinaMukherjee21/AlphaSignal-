@@ -41,10 +41,15 @@ async def get_tickers():
         # Attempt to load from Redis
         tickers = await redis_client.smembers("active_tickers")
         
+        # Log for debugging (avoiding circular import)
+        import logging
+        api_logger = logging.getLogger("api.sentiment")
+        api_logger.info(f"🔍 [API] Ticker request. Redis set: {tickers}")
+
         if not tickers:
             # Fall back to env and populate Redis
             env_tickers = os.getenv("TICKERS", "AAPL,TSLA,RELIANCE.NS,TCS.NS")
-            logger.info(f"🔄 [API] Ticker cache empty. Populating from env: {env_tickers}")
+            api_logger.info(f"🔄 [API] Ticker cache empty. Populating from env: {env_tickers}")
             
             default_tickers = env_tickers.split(",")
             tickers_list = [t.strip().upper() for t in default_tickers if t.strip()]
@@ -53,10 +58,14 @@ async def get_tickers():
                 await redis_client.sadd("active_tickers", *tickers_list)
                 tickers = set(tickers_list)
         
+        if not tickers:
+            return ["AAPL", "TSLA", "RELIANCE.NS"]
+            
         return sorted(list(tickers))
     except Exception as e:
-        logger.error(f"❌ [API] Error fetching tickers: {e}")
-        return ["AAPL", "TSLA"] # Absolute emergency fallback
+        import logging
+        logging.error(f"❌ [API] Error fetching tickers: {e}")
+        return ["AAPL", "TSLA", "RELIANCE.NS"] # Emergency fallback
 
 @router.post("/tickers/{ticker}")
 async def add_ticker(ticker: str):
