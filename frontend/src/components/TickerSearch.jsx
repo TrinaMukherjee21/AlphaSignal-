@@ -12,9 +12,26 @@ const TickerSearch = () => {
     const dropdownRef = useRef(null);
 
     useEffect(() => {
-        axios.get(`${API_BASE}/tickers`)
-            .then(res => setTickers(res.data))
-            .catch(err => console.error(err));
+        let retries = 0;
+        const fetchTickers = () => {
+            axios.get(`${API_BASE}/tickers`)
+                .then(res => {
+                    if (res.data && res.data.length > 0) {
+                        setTickers(res.data);
+                    } else if (retries < 5) {
+                        retries++;
+                        setTimeout(fetchTickers, 3000);
+                    }
+                })
+                .catch(err => {
+                    console.error("Ticker fetch error:", err);
+                    if (retries < 5) {
+                        retries++;
+                        setTimeout(fetchTickers, 3000);
+                    }
+                });
+        };
+        fetchTickers();
     }, []);
 
     // Close dropdown when clicking outside
