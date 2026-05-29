@@ -1,67 +1,63 @@
 import os
 import asyncio
-import httpx
 import logging
-from dotenv import load_dotenv
+from datetime import datetime
+import yfinance as yf
 from kafka.producer import KafkaProducer
-
-load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-NEWS_API_KEY = os.getenv("NEWS_API_KEY", "").strip()
-NEWS_API_URL = "https://newsapi.org/v2/everything"
-
-# Track last seen article publishedAt per ticker to avoid reprocessing
-last_seen_at: dict = {}
-
-async def fetch_news_for_ticker(ticker: str, client: httpx.AsyncClient):
-    try:
-        # Remove country suffixes (e.g. .NS, .BO) so News API gets proper article hits
-        search_query = ticker.split('.')[0]
-        params = {
-            "q": search_query,
-            "apiKey": NEWS_API_KEY,
-            "language": "en",
-            "sortBy": "publishedAt",
-            "pageSize": 10
-        }
-        response = await client.get(NEWS_API_URL, params=params)
-        response.raise_for_status()
-        data = response.json()
-        return data.get("articles", [])
-    except Exception as e:
-        logger.error(f"Error fetching news for {ticker}: {e}")
-        return []
+# Track last seen article timestamps per ticker to avoid reprocessing
+last_seen_published: dict = {}
 
 async def news_scraper_loop(tickers: list, producer: KafkaProducer):
-    async with httpx.AsyncClient() as client:
-        while True:
-            logger.info("Starting news scrape cycle...")
-            for ticker in tickers:
-                articles = await fetch_news_for_ticker(ticker, client)
+    while True:
+        logger.info("Starting Yahoo Finance news scrape cycle...")
+        for ticker in tickers:
+            try:
+                # Use yfinance instead of NewsAPI to avoid 429 Rate Limits
+                symbol = ticker.upper()
+                news = await asyncio.to_thread(lambda: yf.Ticker(symbol).news)
+                
+                if not news:
+                    logger.debug(f"No news found for {ticker} via yfinance.")
+                    continue
+
                 new_count = 0
-                for article in articles:
-                    pub_at = article.get("publishedAt", "")
-                    # Deduplicate: skip articles we've already seen for this ticker
-                    if last_seen_at.get(ticker) and pub_at <= last_seen_at[ticker]:
+                for article in reversed(news): # Process oldest to newest
+                    title = article.get("title")
+                    link = article.get("link")
+                    pub_time = article.get("providerPublishTime") # Unix timestamp
+                    
+                    if not title or not pub_time:
                         continue
-                    message = {
+                        
+                    # Deduplicate: skip articles we've already seen
+                    if last_seen_published.get(ticker) and pub_time <= last_seen_published[ticker]:
+                        continue
+                        
+                    message_data = {
                         "ticker": ticker,
-                        "title": article.get("title"),
-                        "description": article.get("description"),
-                        "url": article.get("url"),
-                        "publishedAt": pub_at,
-                        "source": article.get("source", {}).get("name")
+                        "title": title,
+                        "selftext": title, # Use title for NLP sentiment
+                        "score": 1,
+                        "url": link,
+                        "created_utc": pub_time,
+                        "source": article.get("publisher", "Yahoo Finance")
                     }
-                    await producer.publish("raw-news", message)
+                    
+                    await producer.publish("raw-news", message_data)
                     new_count += 1
-                    if not last_seen_at.get(ticker) or pub_at > last_seen_at[ticker]:
-                        last_seen_at[ticker] = pub_at
+                    
+                    if not last_seen_published.get(ticker) or pub_time > last_seen_published[ticker]:
+                        last_seen_published[ticker] = pub_time
 
                 if new_count:
-                    logger.info(f"Published {new_count} new articles for {ticker}.")
+                    logger.info(f"YFinance: Published {new_count} new articles for {ticker}.")
 
-            logger.info("News scrape cycle complete. Sleeping for 60 seconds.")
-            await asyncio.sleep(60)
+            except Exception as e:
+                logger.error(f"Error fetching YFinance news for {ticker}: {e}")
+                
+        logger.info("News scrape cycle complete. Sleeping for 60 seconds.")
+        await asyncio.sleep(60)
