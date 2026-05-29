@@ -67,5 +67,5 @@ async def stocktwits_scraper_loop(tickers: list, producer: KafkaProducer):
                 if new_count:
                     logger.info(f"Published {new_count} new StockTwits messages for {ticker}.")
 
-            logger.info("StockTwits scrape cycle complete. Sleeping for 60 seconds.")
-            await asyncio.sleep(60)
+            logger.info("StockTwits scrape cycle complete. Sleeping for 600 seconds to respect rate limits.")
+            await asyncio.sleep(600)

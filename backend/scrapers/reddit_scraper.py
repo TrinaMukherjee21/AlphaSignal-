@@ -74,5 +74,5 @@ async def reddit_scraper_loop(tickers: list, producer: KafkaProducer):
 
                     await asyncio.sleep(1)  # Small delay between subreddits
 
-            logger.info("Reddit scrape cycle complete. Sleeping for 60 seconds.")
-            await asyncio.sleep(60)
+            logger.info("Reddit scrape cycle complete. Sleeping for 600 seconds to respect IP rate limits.")
+            await asyncio.sleep(600)
