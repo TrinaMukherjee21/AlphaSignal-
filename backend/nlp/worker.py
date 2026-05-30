@@ -40,8 +40,7 @@ class NLPWorker:
         # Extract texts for scoring
         texts = []
         for msg in messages:
-            # Determine source and combine text
-            source = "news" if "description" in msg else "reddit"
+            # Combine text
             text = f"{msg.get('title', '')} {msg.get('description', '') or msg.get('selftext', '')}"
             texts.append(text)
 
@@ -51,8 +50,18 @@ class NLPWorker:
         # Process each message with its score
         for msg, score in zip(messages, scores):
             ticker = msg.get("ticker")
-            source = "news" if "description" in msg else "reddit"
-            weight = 1.0 if source == "news" else 0.6
+            
+            # Use provided source, default to news if it's yahoo finance, else reddit if truly reddit
+            original_source = msg.get("source", "news")
+            # For backward compatibility, check if it's explicitly from a subreddit
+            if "r/" in original_source or original_source == "reddit":
+                source = "reddit"
+            elif "description" in msg or "yahoo" in original_source.lower() or original_source != "reddit":
+                source = original_source
+            else:
+                source = "reddit"
+                
+            weight = 0.6 if source == "reddit" else 1.0
             
             # Update signal engine
             self.signal_engine.add_score(ticker, score, weight)

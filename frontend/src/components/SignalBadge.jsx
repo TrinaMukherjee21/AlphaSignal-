@@ -50,8 +50,8 @@ const SignalBadge = () => {
 
     const current = config[signal] || config.HOLD;
 
-    // Calculate averages
-    const newsItems = newsFeed.filter(item => item.source === 'news');
+    // Calculate averages (Reddit vs everything else)
+    const newsItems = newsFeed.filter(item => item.source !== 'reddit');
     const redditItems = newsFeed.filter(item => item.source === 'reddit');
     const newsAvg = newsItems.length ? newsItems.reduce((acc, curr) => acc + curr.score, 0) / newsItems.length : 0;
     const redditAvg = redditItems.length ? redditItems.reduce((acc, curr) => acc + curr.score, 0) / redditItems.length : 0;
