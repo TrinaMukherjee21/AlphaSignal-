@@ -13,12 +13,15 @@ async def websocket_endpoint(websocket: WebSocket, ticker: str):
     await manager.connect(ticker, websocket)
     
     try:
-        # 1. Send last 10 cached events from Redis
-        cache_key = f"sentiment:{ticker}"
-        cached_events = await redis_client.lrange(cache_key, 0, 9)
-        if cached_events:
-            for event_json in reversed(cached_events):
-                await websocket.send_json(json.loads(event_json))
+        try:
+            # 1. Send last 10 cached events from Redis
+            cache_key = f"sentiment:{ticker}"
+            cached_events = await redis_client.lrange(cache_key, 0, 9)
+            if cached_events:
+                for event_json in reversed(cached_events):
+                    await websocket.send_json(json.loads(event_json))
+        except Exception as redis_err:
+            logger.warning(f"Skipping Redis cache hydration for {ticker} due to: {redis_err}")
         
         # 2. Keep connection alive and listen for any client messages
         while True:
