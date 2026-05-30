@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0").strip()
+# Strip whitespace AND surrounding quotes (common when pasting into Render env vars UI)
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0").strip().strip('"').strip("'")
 
 if REDIS_URL.startswith("rediss://"):
     parsed = urllib.parse.urlparse(REDIS_URL)

@@ -1,14 +1,19 @@
-# Backend entry point for Render deployment
 import logging
+import os
 
-# Configure logging early so we can show loading messages before heavy imports!
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("SystemLauncher")
-logger.info("✨ [System] Booting up... Loading heavy ML libraries (Transformers/PyTorch).")
-logger.warning("⏳ [WAIT] This specific import can take up to 2-4 minutes on Windows during metadata scans. Please do not cancel!")
+
+_lite = os.getenv("LITE_MODE", "false").lower() == "true"
+if _lite:
+    logger.info("✨ [System] Booting up in LITE_MODE (VADER sentiment only, low memory).")
+else:
+    logger.info("✨ [System] Booting up... Loading heavy ML libraries (Transformers/PyTorch).")
+    logger.warning("⏳ [WAIT] This specific import can take up to 2-4 minutes on Windows during metadata scans. Please do not cancel!")
+
 
 import asyncio
 import uvicorn
