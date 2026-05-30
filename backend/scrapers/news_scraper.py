@@ -26,9 +26,24 @@ async def news_scraper_loop(tickers: list, producer: KafkaProducer):
 
                 new_count = 0
                 for article in reversed(news): # Process oldest to newest
-                    title = article.get("title")
-                    link = article.get("link")
-                    pub_time = article.get("providerPublishTime") # Unix timestamp
+                    content = article.get("content", {})
+                    # For older versions of yfinance, it might be flat, so fallback to article.get
+                    title = content.get("title") or article.get("title")
+                    
+                    # URL could be nested in clickThroughUrl or flat
+                    link = content.get("clickThroughUrl", {}).get("url") or article.get("link")
+                    
+                    # Time could be pubDate (ISO string) or providerPublishTime (unix timestamp)
+                    pub_time = None
+                    if "pubDate" in content:
+                        try:
+                            # e.g., '2022-05-30T10:00:00Z'
+                            pub_time_str = content["pubDate"].replace('Z', '+00:00')
+                            pub_time = datetime.fromisoformat(pub_time_str).timestamp()
+                        except:
+                            pass
+                    if not pub_time:
+                        pub_time = article.get("providerPublishTime") # Unix timestamp fallback
                     
                     if not title or not pub_time:
                         continue
@@ -42,9 +57,9 @@ async def news_scraper_loop(tickers: list, producer: KafkaProducer):
                         "title": title,
                         "selftext": title, # Use title for NLP sentiment
                         "score": 1,
-                        "url": link,
+                        "url": link or "https://finance.yahoo.com",
                         "created_utc": pub_time,
-                        "source": article.get("publisher", "Yahoo Finance")
+                        "source": content.get("provider", {}).get("displayName") or article.get("publisher", "Yahoo Finance")
                     }
                     
                     await producer.publish("raw-news", message_data)
