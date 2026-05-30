@@ -26,7 +26,7 @@ async def news_scraper_loop(tickers: list, producer: KafkaProducer):
 
                 new_count = 0
                 for article in reversed(news): # Process oldest to newest
-                    content = article.get("content", {})
+                    content = article.get("content") or {}
                     # For older versions of yfinance, it might be flat, so fallback to article.get
                     title = content.get("title") or article.get("title")
                     
