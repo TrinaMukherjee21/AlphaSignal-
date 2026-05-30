@@ -152,7 +152,7 @@ const PriceChart = () => {
                 )}
                 <div className="relative group/metric overflow-hidden">
                     <div className="text-[9px] text-slate-400 uppercase font-black tracking-[0.2em] mb-1 group-hover/metric:text-[#00f0ff] transition-colors">Live Execution</div>
-                    <div className="text-3xl font-mono text-white flex items-center gap-2 font-bold tracking-tighter drop-shadow-md">
+                    <div className="text-2xl lg:text-3xl font-mono text-white flex flex-wrap items-center gap-2 font-bold tracking-tighter drop-shadow-md">
                         ${currentPrice.toFixed(2)}
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shadow-xl ${changePercent >= 0 ? 'bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20' : 'bg-[#ff00e5]/10 text-[#ff00e5] border border-[#ff00e5]/20'}`}>
                             {changePercent >= 0 ? '▲' : '▼'}{Math.abs(changePercent).toFixed(2)}%
@@ -162,15 +162,15 @@ const PriceChart = () => {
                 </div>
                 <div className="border-l border-white/5 pl-4 relative group/metric overflow-hidden">
                     <div className="text-[9px] text-slate-400 uppercase font-black tracking-[0.2em] mb-1 group-hover/metric:text-[#00f0ff] transition-colors">Session High</div>
-                    <div className="text-2xl font-mono text-slate-200">${Math.max(...fullData.map(d => d.high)).toFixed(2)}</div>
+                    <div className="text-xl lg:text-2xl font-mono text-slate-200">${Math.max(...fullData.map(d => d.high)).toFixed(2)}</div>
                 </div>
                 <div className="border-l border-white/5 pl-4 relative group/metric overflow-hidden">
                     <div className="text-[9px] text-slate-400 uppercase font-black tracking-[0.2em] mb-1 group-hover/metric:text-[#ff00e5] transition-colors">Session Low</div>
-                    <div className="text-2xl font-mono text-slate-200">${Math.min(...fullData.map(d => d.low)).toFixed(2)}</div>
+                    <div className="text-xl lg:text-2xl font-mono text-slate-200">${Math.min(...fullData.map(d => d.low)).toFixed(2)}</div>
                 </div>
                 <div className="border-l border-white/5 pl-4 relative group/metric overflow-hidden">
                     <div className="text-[9px] text-slate-400 uppercase font-black tracking-[0.2em] mb-1 group-hover/metric:text-[#7000ff] transition-colors">Tick Volume</div>
-                    <div className="text-2xl font-mono text-slate-200">{latest.volume.toLocaleString()}</div>
+                    <div className="text-xl lg:text-2xl font-mono text-slate-200">{latest.volume.toLocaleString()}</div>
                 </div>
             </div>
 

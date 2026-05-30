@@ -78,16 +78,16 @@ function App() {
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="glass-panel border-b-0 border-opacity-20 sticky top-0 z-50 rounded-b-2xl mx-4 mt-2"
+        className="glass-panel border-b-0 border-opacity-20 sticky top-0 z-50 rounded-b-2xl mx-2 md:mx-4 mt-2"
       >
-        <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4 group cursor-pointer">
+        <div className="max-w-[1600px] mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 md:gap-4 group cursor-pointer">
             <div className="bg-[#00f0ff]/10 border border-[#00f0ff]/30 p-2 rounded-lg group-hover:border-[#00f0ff] transition-colors duration-300 relative overflow-hidden">
               <div className="absolute inset-0 bg-[#00f0ff]/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
               <TrendingUp className="text-[#00f0ff] w-5 h-5 relative z-10 group-hover:scale-110 transition-transform" />
             </div>
-            <span className="text-2xl font-black tracking-tight text-white flex items-center">
-              Alpha<span className="text-gradient ml-1">Signal</span>
+            <span className="text-xl md:text-2xl font-black tracking-tight text-white flex items-center">
+              Alpha<span className="text-gradient ml-1 hidden sm:inline">Signal</span>
             </span>
           </div>
 
@@ -156,23 +156,23 @@ function App() {
               className="glass-card rounded-2xl p-5 flex flex-col justify-between group overflow-hidden relative"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-[#00f0ff]/10 transition-colors duration-500"></div>
-              <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2 z-10">{stat.label}</span>
-              <span className={`text-3xl font-mono tracking-tight z-10 ${stat.uppercase ? 'uppercase text-2xl' : ''} ${stat.color}`}>
-                {stat.value} {stat.sub && <span className="text-sm text-slate-500 ml-1 nornal-case font-sans tracking-normal">{stat.sub}</span>}
+              <span className="text-[10px] md:text-xs uppercase tracking-widest text-slate-400 font-bold mb-2 z-10">{stat.label}</span>
+              <span className={`text-2xl md:text-3xl font-mono tracking-tight z-10 ${stat.uppercase ? 'uppercase text-xl md:text-2xl' : ''} ${stat.color}`}>
+                {stat.value} {stat.sub && <span className="text-xs md:text-sm text-slate-500 ml-1 normal-case font-sans tracking-normal">{stat.sub}</span>}
               </span>
             </motion.div>
           ))}
         </div>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-280px)] min-h-[600px]">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:h-[calc(100vh-280px)] lg:min-h-[600px]">
           
           {/* Chart Section */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="lg:col-span-3 flex flex-col gap-4 overflow-hidden"
+            className="lg:col-span-3 flex flex-col gap-4 overflow-hidden min-h-[500px] lg:min-h-0"
           >
             <div className="flex items-center justify-between px-2">
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -191,7 +191,7 @@ function App() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="lg:col-span-1 flex flex-col gap-6 h-full overflow-hidden"
+            className="lg:col-span-1 flex flex-col gap-6 lg:h-full overflow-hidden min-h-[600px] lg:min-h-0"
           >
             <SignalBadge />
             <div className="flex-1 min-h-0">

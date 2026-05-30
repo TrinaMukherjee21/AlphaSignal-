@@ -65,7 +65,7 @@ const TickerSearch = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-[calc(100%+8px)] left-0 right-0 bg-[#05050a] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden z-50 py-2 border border-[#00f0ff]/20"
+                        className="absolute top-[calc(100%+8px)] right-0 w-[260px] bg-[#05050a] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden z-50 py-2 border border-[#00f0ff]/20"
                     >
                         {(() => {
                             const inTickers = tickers.filter(t => t.endsWith('.NS') || t.endsWith('.BO'));

@@ -18,7 +18,8 @@ async def news_scraper_loop(tickers: list, producer: KafkaProducer):
             try:
                 # Use yfinance instead of NewsAPI to avoid 429 Rate Limits
                 symbol = ticker.upper()
-                news = await asyncio.to_thread(lambda: yf.Ticker(symbol).news)
+                # Use default arg to capture current ticker value in the lambda closure
+                news = await asyncio.to_thread(lambda s=symbol: yf.Ticker(s).news)
                 
                 if not news:
                     logger.debug(f"No news found for {ticker} via yfinance.")
@@ -26,6 +27,8 @@ async def news_scraper_loop(tickers: list, producer: KafkaProducer):
 
                 new_count = 0
                 for article in reversed(news): # Process oldest to newest
+                    if article is None:
+                        continue
                     content = article.get("content") or {}
                     # For older versions of yfinance, it might be flat, so fallback to article.get
                     title = content.get("title") or article.get("title")
