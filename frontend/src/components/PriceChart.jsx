@@ -127,7 +127,7 @@ const PriceChart = () => {
     };
 
     return (
-        <div className="w-full h-full bg-transparent p-6 flex flex-col gap-6 relative overflow-hidden rounded-2xl group">
+        <div className="w-full h-full bg-transparent p-3 md:p-6 flex flex-col gap-4 md:gap-6 relative overflow-hidden rounded-2xl group">
             {/* Global Styles for Neon Effects */}
             <style dangerouslySetInnerHTML={{ __html: `
                 .chart-line-glow { filter: drop-shadow(0 0 8px #00f0ff); }
@@ -175,7 +175,7 @@ const PriceChart = () => {
             </div>
 
             {/* Main Price Visualization */}
-            <div className="flex-1 flex flex-col gap-2 min-h-0 bg-black/20 p-4 rounded-xl border border-white/5">
+            <div className="h-[300px] md:h-[320px] lg:flex-1 lg:min-h-0 flex flex-col gap-2 bg-black/20 p-4 rounded-xl border border-white/5">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-3 bg-[#00f0ff] rounded-full drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]" />
@@ -276,7 +276,7 @@ const PriceChart = () => {
             </div>
 
             {/* Sentiment Overlay Bar Chart */}
-            <div className="h-[140px] flex flex-col gap-2 bg-black/20 p-4 rounded-xl border border-white/5">
+            <div className="h-[120px] md:h-[140px] flex-shrink-0 flex flex-col gap-2 bg-black/20 p-4 rounded-xl border border-white/5">
                 <div className="flex justify-between items-center px-1">
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-3 bg-[#7000ff] rounded-full drop-shadow-[0_0_5px_rgba(112,0,255,0.8)]" />

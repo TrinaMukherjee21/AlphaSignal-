@@ -172,7 +172,7 @@ function App() {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="lg:col-span-3 flex flex-col gap-4 overflow-hidden min-h-[500px] lg:min-h-0"
+            className="lg:col-span-3 flex flex-col gap-4 overflow-hidden"
           >
             <div className="flex items-center justify-between px-2">
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -180,7 +180,7 @@ function App() {
                 Price & Sentiment Core
               </h2>
             </div>
-            <div className="flex-1 min-h-0 glass-card rounded-2xl overflow-hidden shadow-2xl relative">
+            <div className="h-[600px] lg:flex-1 lg:min-h-0 glass-card rounded-2xl overflow-hidden shadow-2xl relative">
               <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
               <PriceChart />
             </div>
