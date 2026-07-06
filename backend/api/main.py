@@ -51,20 +51,21 @@ async def startup():
     asyncio.create_task(kafka_broadcast_task())
 
 async def kafka_broadcast_task():
-    # Listen to processed sentiment and price ticks
-    consumer = KafkaConsumer(["sentiment-scores", "price-ticks"])
-    logger.info("API Kafka Broadcast Task started.")
-    
-    async for message in consumer.listen():
-        ticker = message.get("ticker")
-        if ticker:
-            # 1. Broadcast to all WS clients subscribed to this ticker
-            await manager.broadcast(ticker, message)
-            
-            # 2. Publish to Redis pub/sub for SSE clients
-            payload = json.dumps(message)
-            await redis_client.publish(f"updates:{ticker}", payload)
-            
-            # 3. Cache last signal for instant hydration on new connections
-            if "signal" in message:
-                await redis_client.set(f"last_signal:{ticker}", payload, ex=3600)
+    # Listen to processed sentiment and price ticks.
+    # Wrapped in retry loop — if Redis is down, keep retrying rather than crashing.
+    while True:
+        try:
+            consumer = KafkaConsumer(["sentiment-scores", "price-ticks"])
+            logger.info("API Kafka Broadcast Task started.")
+            async for message in consumer.listen():
+                ticker = message.get("ticker")
+                if ticker:
+                    await manager.broadcast(ticker, message)
+                    payload = json.dumps(message)
+                    await redis_client.publish(f"updates:{ticker}", payload)
+                    if "signal" in message:
+                        await redis_client.set(f"last_signal:{ticker}", payload, ex=3600)
+        except Exception as e:
+            logger.warning(f"⚠️ [Kafka/Redis] Broadcast task error (will retry in 10s): {e}")
+            await asyncio.sleep(10)
+

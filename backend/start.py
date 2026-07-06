@@ -39,39 +39,48 @@ async def run_api():
     await server.serve()
 
 async def run_worker():
-    """Starts the NLP Worker coroutine."""
-    logger.info("🧠 [NLP] Starting Worker...")
-    worker = NLPWorker()
-    try:
-        await worker.start()
-    except asyncio.CancelledError:
-        logger.info("🧠 [NLP] Worker cancelled, cleaning up...")
-        await worker.producer.stop()
-        await worker.consumer.stop()
-        raise
+    """Starts the NLP Worker coroutine with retry resilience."""
+    while True:
+        try:
+            logger.info("🧠 [NLP] Starting Worker...")
+            worker = NLPWorker()
+            await worker.start()
+        except asyncio.CancelledError:
+            logger.info("🧠 [NLP] Worker cancelled.")
+            raise
+        except Exception as e:
+            logger.error(f"🧠 [NLP] Worker crashed: {e}. Retrying in 15s...")
+            await asyncio.sleep(15)
 
 async def run_scrapers():
-    """Starts the Scrapers main coroutine."""
-    logger.info("🕷️ [Scrapers] Starting Scrapers...")
-    try:
-        await scraper_main()
-    except asyncio.CancelledError:
-        logger.info("🕷️ [Scrapers] Scrapers cancelled.")
-        raise
+    """Starts the Scrapers main coroutine with retry resilience."""
+    while True:
+        try:
+            logger.info("🕷️ [Scrapers] Starting Scrapers...")
+            await scraper_main()
+        except asyncio.CancelledError:
+            logger.info("🕷️ [Scrapers] Scrapers cancelled.")
+            raise
+        except Exception as e:
+            logger.error(f"🕷️ [Scrapers] Scrapers crashed: {e}. Retrying in 15s...")
+            await asyncio.sleep(15)
 
 async def run_price_processor():
-    """Starts the Price Processor coroutine."""
-    logger.info("📈 [Prices] Starting Price Processor...")
-    processor = PriceProcessor()
-    try:
-        await processor.start()
-    except asyncio.CancelledError:
-        logger.info("📈 [Prices] Price Processor cancelled.")
-        raise
+    """Starts the Price Processor coroutine with retry resilience."""
+    while True:
+        try:
+            logger.info("📈 [Prices] Starting Price Processor...")
+            processor = PriceProcessor()
+            await processor.start()
+        except asyncio.CancelledError:
+            logger.info("📈 [Prices] Price Processor cancelled.")
+            raise
+        except Exception as e:
+            logger.error(f"📈 [Prices] Processor crashed: {e}. Retrying in 15s...")
+            await asyncio.sleep(15)
 
 async def main():
     """Coordinator to run all services concurrently."""
-    # Define the tasks
     tasks = [
         run_api(),
         run_worker(),
@@ -80,10 +89,9 @@ async def main():
     ]
     
     try:
-        # Run everything together
-        await asyncio.gather(*tasks)
+        # return_exceptions=True lets other services keep running if one fails
+        await asyncio.gather(*tasks, return_exceptions=True)
     except asyncio.CancelledError:
-        # This is expected when the loop is stopped
         pass
     except Exception as e:
         logger.error(f"💥 [System] A service encountered a fatal error: {e}")
