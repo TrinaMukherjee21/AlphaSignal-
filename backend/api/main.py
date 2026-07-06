@@ -16,10 +16,18 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Trade Sentiment API")
 
+# IMPORTANT: allow_credentials=True is incompatible with allow_origins=["*"].
+# List explicit origins instead.
+CORS_ORIGINS = [
+    "https://alpha-signal-two.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -31,9 +39,13 @@ app.include_router(ws_routes.router)
 
 @app.on_event("startup")
 async def startup():
-    # Create tables if they don't exist
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Create tables if they don't exist — wrapped so a missing DB doesn't crash the server
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("✅ [DB] Tables created/verified successfully.")
+    except Exception as e:
+        logger.error(f"⚠️ [DB] Could not connect to database on startup: {e}. API will start without DB.")
     
     # Start Kafka broadcast task
     asyncio.create_task(kafka_broadcast_task())
