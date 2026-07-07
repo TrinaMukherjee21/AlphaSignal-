@@ -1,8 +1,9 @@
 import asyncio
 import json
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from api.routes import sentiment, prices, stream
 from api.websocket import ws_routes
 from api.websocket.ws_manager import manager
@@ -31,6 +32,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Global exception handler: ensures CORS headers are added even on 500 errors.
+# Without this, DB connection failures return 500 without CORS headers, blocking the browser.
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}")
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in CORS_ORIGINS:
+        headers["Access-Control-Allow-Origin"] = origin
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+        headers=headers,
+    )
 
 app.include_router(sentiment.router)
 app.include_router(prices.router)
