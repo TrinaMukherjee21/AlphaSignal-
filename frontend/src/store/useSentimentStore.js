@@ -20,20 +20,21 @@ export const useSentimentStore = create((set, get) => ({
         
         // Fetch initial data
         try {
-            const [sentimentRes, priceRes, signalRes] = await Promise.all([
-                axios.get(`${API_BASE}/sentiment/${ticker}`),
-                axios.get(`${API_BASE}/prices/${ticker}`),
-                axios.get(`${API_BASE}/signal/${ticker}`)
-            ]);
-            
-            set({ 
-                scores: sentimentRes.data,
-                priceData: priceRes.data,
-                signal: signalRes.data.signal,
-                newsFeed: sentimentRes.data // News feed is basically historical sentiment here
-            });
-            
-            connectWebSocket(ticker);
+        // Use allSettled so a single failing endpoint doesn't block the others
+        const [sentimentRes, priceRes, signalRes] = await Promise.allSettled([
+            axios.get(`${API_BASE}/sentiment/${ticker}`),
+            axios.get(`${API_BASE}/prices/${ticker}`),
+            axios.get(`${API_BASE}/signal/${ticker}`)
+        ]);
+        
+        set({ 
+            scores: sentimentRes.status === 'fulfilled' ? sentimentRes.value.data : [],
+            priceData: priceRes.status === 'fulfilled' ? priceRes.value.data : [],
+            signal: signalRes.status === 'fulfilled' ? signalRes.value.data.signal : 'HOLD',
+            newsFeed: sentimentRes.status === 'fulfilled' ? sentimentRes.value.data : []
+        });
+        
+        connectWebSocket(ticker);
         } catch (error) {
             console.error("Error fetching initial ticker data:", error);
         }
