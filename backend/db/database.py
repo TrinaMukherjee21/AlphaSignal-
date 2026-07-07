@@ -19,16 +19,40 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,
 )
 
+import logging
+
+_db_logger = logging.getLogger("db.database")
+
 async def get_db():
-    async with AsyncSessionLocal() as session:
+    """
+    Yield an async DB session. Errors in cleanup (commit/rollback/close)
+    are logged but never re-raised — this prevents FastAPI from replacing
+    a successful 200 response with a 500 due to a post-yield exception.
+    """
+    session = AsyncSessionLocal()
+    try:
+        yield session
         try:
-            yield session
             await session.commit()
-        except Exception:
+        except Exception as e:
+            _db_logger.error(f"DB commit failed (non-fatal, route already responded): {e}")
+            try:
+                await session.rollback()
+            except Exception as rb_err:
+                _db_logger.error(f"DB rollback failed: {rb_err}")
+    except Exception as e:
+        # Exception thrown INTO the generator by FastAPI (route raised).
+        # Log it, attempt rollback, but do NOT re-raise.
+        _db_logger.error(f"DB session error: {e}")
+        try:
             await session.rollback()
-            raise
-        finally:
+        except Exception as rb_err:
+            _db_logger.error(f"DB rollback failed: {rb_err}")
+    finally:
+        try:
             await session.close()
+        except Exception as e:
+            _db_logger.error(f"DB close failed: {e}")
 
 async def init_db():
     # Import Base and models here to avoid circular imports and ensure models are registered
