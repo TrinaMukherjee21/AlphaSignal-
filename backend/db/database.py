@@ -10,7 +10,10 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://user:password@loc
 engine = create_async_engine(
     DATABASE_URL,
     echo=True,
-    connect_args={"ssl": "require"},
+    connect_args={
+        "ssl": "require",
+        "statement_cache_size": 0,  # Required for PgBouncer/Supabase transaction pooling
+    },
 )
 
 AsyncSessionLocal = async_sessionmaker(

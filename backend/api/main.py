@@ -55,11 +55,14 @@ app.include_router(ws_routes.router)
 
 @app.on_event("startup")
 async def startup():
-    # Create tables if they don't exist — wrapped so a missing DB doesn't crash the server
+    # Create tables if they don't exist — wrapped in safety timeout and try/except
     try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+        async with asyncio.timeout(5.0):
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
         logger.info("✅ [DB] Tables created/verified successfully.")
+    except asyncio.TimeoutError:
+        logger.error("⚠️ [DB] Connection timed out on startup. API will start without DB.")
     except Exception as e:
         logger.error(f"⚠️ [DB] Could not connect to database on startup: {e}. API will start without DB.")
     
